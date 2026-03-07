@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+
 import { Flag, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getNASCARSchedule, getNASCARDrivers, type NASCARRace, type NASCARDriver } from "@/lib/nascar-api";
@@ -130,18 +130,40 @@ function PicksContent() {
         return;
       }
 
-      const { error } = await supabase
+      // Check if picks already exist for this race
+      const { data: existingPicks } = await supabase
         .from("picks")
-        .upsert(
-          {
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("race_id", parseInt(raceId))
+        .single();
+
+      let error;
+      if (existingPicks) {
+        // Update existing pick
+        const { error: updateError } = await supabase
+          .from("picks")
+          .update({
+            driver_1_id: selectedDrivers[0],
+            driver_2_id: selectedDrivers[1],
+            driver_3_id: selectedDrivers[2],
+          })
+          .eq("user_id", user.id)
+          .eq("race_id", parseInt(raceId));
+        error = updateError;
+      } else {
+        // Insert new pick
+        const { error: insertError } = await supabase
+          .from("picks")
+          .insert({
             user_id: user.id,
             race_id: parseInt(raceId),
             driver_1_id: selectedDrivers[0],
             driver_2_id: selectedDrivers[1],
             driver_3_id: selectedDrivers[2],
-          },
-          { onConflict: "user_id,race_id" }
-        );
+          });
+        error = insertError;
+      }
 
       if (error) {
         setMessage(`Error saving picks: ${error.message}`);
@@ -221,40 +243,36 @@ function PicksContent() {
                     key={driver.id}
                     type="button"
                     onClick={() => toggleDriver(driver.id)}
-                    className={`p-3 rounded-lg border-2 transition-all text-left flex flex-col cursor-pointer ${
+                    className={`p-2 rounded-lg border-2 transition-all text-left flex flex-col cursor-pointer ${
                       selectedDrivers.includes(driver.id)
                         ? "border-primary bg-primary/10"
                         : "border-muted hover:border-primary/50"
                     }`}
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        {driver.badgeImage && (
-                          <img
-                            src={driver.badgeImage}
-                            alt={`${driver.name} badge`}
-                            className="h-10 w-10 object-contain mb-1"
-                          />
-                        )}
-                        <p className="text-xs text-muted-foreground line-clamp-2">{driver.name}</p>
-                        {driver.teamName && (
-                          <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{driver.teamName}</p>
-                        )}
-                      </div>
-                      {selectedDrivers.includes(driver.id) && (
-                        <Check className="w-4 h-4 text-primary flex-shrink-0 ml-1" />
-                      )}
-                    </div>
-
-                    <div className="flex gap-2 items-center justify-center mt-auto pt-2">
-                      {driver.manufacturerImage && (
+                    <div className="w-full aspect-square bg-muted rounded overflow-hidden mb-1.5 flex items-center justify-center relative">
+                      {driver.firesuitImage ? (
                         <img
-                          src={driver.manufacturerImage}
-                          alt="Manufacturer"
-                          className="h-6 w-6 object-contain"
+                          src={driver.firesuitImage}
+                          alt={`${driver.name}`}
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <div className="text-muted-foreground text-xs">No image</div>
+                      )}
+                      {driver.badgeImage && (
+                        <img
+                          src={driver.badgeImage}
+                          alt={`${driver.name} badge`}
+                          className="absolute top-1 left-1 h-10 w-10 object-contain bg-white rounded p-0.5"
                         />
                       )}
+                      {selectedDrivers.includes(driver.id) && (
+                        <div className="absolute inset-0 bg-primary/30 flex items-center justify-center">
+                          <Check className="w-8 h-8 text-primary drop-shadow" />
+                        </div>
+                      )}
                     </div>
+                    <p className="text-xs font-medium text-center line-clamp-1">{driver.name}</p>
                   </button>
                 ))}
               </div>

@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Calendar, Trophy, Flag, BookOpen } from "lucide-react";
+import { Home, Calendar, Trophy, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/schedule", label: "Schedule", icon: Calendar },
-  { href: "/picks", label: "Picks", icon: Flag },
   { href: "/standings", label: "Standings", icon: Trophy },
   { href: "/rules", label: "Rules", icon: BookOpen },
 ];

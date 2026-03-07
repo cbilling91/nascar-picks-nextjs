@@ -49,12 +49,6 @@ export function Header({ user }: HeaderProps) {
           <Link href="/standings" className="text-sm font-medium hover:text-primary">
             Standings
           </Link>
-          <Link href="/picks" className="text-sm font-medium hover:text-primary">
-            My Picks
-          </Link>
-          <Link href="/live" className="text-sm font-medium hover:text-primary">
-            Live
-          </Link>
           <Link href="/rules" className="text-sm font-medium hover:text-primary">
             Rules
           </Link>
