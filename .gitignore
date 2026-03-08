@@ -42,3 +42,4 @@ next-env.d.ts
 
 # Testing
 coverage/
+terraform/terraform.tfvars
