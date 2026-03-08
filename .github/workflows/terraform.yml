@@ -6,10 +6,6 @@ on:
       image_tag:
         required: true
         type: string
-  push:
-    branches: [main]
-    paths:
-      - terraform/**
   pull_request:
     paths:
       - terraform/**

@@ -49,6 +49,10 @@ jobs:
 
   deploy:
     needs: build
+    permissions:
+      id-token: write
+      pull-requests: write
+      contents: read
     uses: ./.github/workflows/terraform.yml
     with:
       image_tag: ${{ github.sha }}
