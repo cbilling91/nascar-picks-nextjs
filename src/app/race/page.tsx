@@ -24,7 +24,7 @@ import {
   type RaceStageInfo,
   type LiveLapData,
 } from "@/lib/nascar-api";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/client";
 
 export default function LivePage() {
   const searchParams = useSearchParams();
@@ -38,7 +38,7 @@ export default function LivePage() {
   const [totalLaps, setTotalLaps] = useState(0);
   const [leader, setLeader] = useState<string>("");
   const [flagState, setFlagState] = useState(0);
-  const supabase = createClient();
+  const supabase = useSupabase();
 
   useEffect(() => {
     const loadRaceData = async () => {

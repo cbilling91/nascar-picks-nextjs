@@ -1,6 +1,5 @@
-# Step 1 is handled by azurerm_container_app_custom_domain in dns.tf (Disabled binding)
-
-# Step 2: Create the managed certificate (HTTP domain control validation)
+# Step 1: Create the managed certificate (CNAME domain control validation)
+# CNAME validation uses the existing DNS CNAME record — no prior Disabled binding required
 resource "azapi_resource" "nascar_picks_certificate" {
   type      = "Microsoft.App/managedEnvironments/managedCertificates@2023-05-02-preview"
   name      = local.domain_name
@@ -9,14 +8,19 @@ resource "azapi_resource" "nascar_picks_certificate" {
 
   body = {
     properties = {
-      domainControlValidation = "HTTP"
+      domainControlValidation = "CNAME"
       subjectName             = local.domain_name
     }
   }
 
   depends_on = [
-    azurerm_container_app_custom_domain.app,
+    azurerm_dns_cname_record.app,
+    azurerm_dns_txt_record.app_verification,
   ]
+
+  lifecycle {
+    ignore_changes = [body]
+  }
 }
 
 # Step 3: Re-bind the hostname with the managed certificate (SniEnabled)

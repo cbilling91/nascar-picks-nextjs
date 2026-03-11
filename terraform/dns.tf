@@ -30,18 +30,3 @@ resource "azurerm_dns_txt_record" "app_verification" {
   }
 }
 
-# Bind the custom domain to the container app (cert binding managed separately via azapi)
-resource "azurerm_container_app_custom_domain" "app" {
-  name                     = local.domain_name
-  container_app_id         = azurerm_container_app.nascar_picks_app.id
-  certificate_binding_type = "Disabled"
-
-  depends_on = [
-    azurerm_dns_txt_record.app_verification,
-    azurerm_dns_cname_record.app,
-  ]
-
-  lifecycle {
-    ignore_changes = [certificate_binding_type]
-  }
-}

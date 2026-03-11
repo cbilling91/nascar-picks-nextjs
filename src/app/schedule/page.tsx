@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "lucide-react";
 import { getNASCARSchedule, getNASCARDrivers, isRaceLiveOrUpcoming, getLiveLapData, type NASCARRace, type NASCARDriver } from "@/lib/nascar-api";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/client";
 
 const raceTypes: Record<string, { label: string; color: string }> = {
   clash: { label: "Clash", color: "bg-purple-600" },
@@ -25,7 +25,7 @@ export default function SchedulePage() {
   const [liveRaces, setLiveRaces] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const supabase = createClient();
+  const supabase = useSupabase();
 
   useEffect(() => {
     const loadSchedule = async () => {

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 
 import { Flag, Check } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/client";
 import { getNASCARSchedule, getNASCARDrivers, type NASCARRace, type NASCARDriver } from "@/lib/nascar-api";
 
 function PicksContent() {
@@ -19,7 +19,7 @@ function PicksContent() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const supabase = createClient();
+  const supabase = useSupabase();
 
   useEffect(() => {
     const loadRaceAndPicks = async () => {

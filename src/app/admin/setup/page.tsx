@@ -7,11 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/client";
 
 export default function AdminSetupPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useSupabase();
   const [userId, setUserId] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);

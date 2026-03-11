@@ -32,12 +32,12 @@ resource "azurerm_container_app" "nascar_picks_app" {
       memory = "0.5Gi"
 
       env {
-        name  = "NEXT_PUBLIC_SUPABASE_URL"
+        name  = "SUPABASE_URL"
         value = var.supabase_url
       }
 
       env {
-        name  = "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+        name  = "SUPABASE_ANON_KEY"
         value = var.supabase_anon_key
       }
 

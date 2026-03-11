@@ -36,8 +36,6 @@ jobs:
             --builder paketobuildpacks/builder-jammy-base \
             --env BP_NODE_RUN_SCRIPTS=build \
             --env NODE_ENV=production \
-            --env NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
-            --env NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
             --publish
 
       - name: Tag as latest
