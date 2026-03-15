@@ -5,9 +5,11 @@ export async function middleware(request: NextRequest) {
   const tokenFromQuery = request.nextUrl.searchParams.get("token");
   const tokenFromCookie = request.cookies.get("auth_token")?.value;
 
-  // If token in query param, set it as a cookie and redirect
+  // If token in query param, set it as a cookie and redirect to same path without token
   if (tokenFromQuery) {
-    const response = NextResponse.redirect(new URL("/", request.url));
+    const url = request.nextUrl.clone();
+    url.searchParams.delete("token"); // Remove token from URL to prevent redirect loop
+    const response = NextResponse.redirect(url);
     response.cookies.set("auth_token", tokenFromQuery, {
       httpOnly: false,
       secure: process.env.NODE_ENV === "production",

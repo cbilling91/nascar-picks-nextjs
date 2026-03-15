@@ -3,9 +3,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Trophy, Flag, Clock } from "lucide-react";
 import { getCurrentUser } from "@/lib/token-auth";
+import { getNASCARSchedule, getLiveLapData } from "@/lib/nascar-api";
 
 export default async function Home() {
   const user = await getCurrentUser();
+
+  const schedule = await getNASCARSchedule();
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const nextRace = schedule
+    .filter((race) => new Date(race.date) >= todayStart)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0] ?? null;
+
+  const formattedDate = nextRace
+    ? new Date(nextRace.date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+    : null;
+
+  const lapData = nextRace ? await getLiveLapData(nextRace.raceId) : null;
+  const isLive = lapData !== null && lapData.currentLap > 0;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -41,12 +56,14 @@ export default async function Home() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">Daytona 500</div>
+              <div className="text-2xl font-bold">{nextRace?.name ?? "TBD"}</div>
               <p className="text-xs text-muted-foreground">
-                February 16, 2026
+                {formattedDate ?? "No upcoming races"}
               </p>
               <Button asChild className="mt-4 w-full" size="sm">
-                <Link href="/picks">Make Picks</Link>
+                <Link href={isLive ? `/race?raceId=${nextRace!.raceId}` : nextRace ? `/picks?raceId=${nextRace.raceId}` : "/schedule"}>
+                  {isLive ? "View Live Race" : nextRace ? "Make Picks" : "View Schedule"}
+                </Link>
               </Button>
             </CardContent>
           </Card>
