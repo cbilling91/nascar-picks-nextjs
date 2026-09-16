@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "lucide-react";
 import { getNASCARSchedule, getNASCARDrivers, isRaceLiveOrUpcoming, getLiveLapData, type NASCARRace, type NASCARDriver } from "@/lib/nascar-api";
-import { useSupabase } from "@/lib/supabase/client";
 
 const raceTypes: Record<string, { label: string; color: string }> = {
   clash: { label: "Clash", color: "bg-purple-600" },
@@ -25,7 +24,6 @@ export default function SchedulePage() {
   const [liveRaces, setLiveRaces] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const supabase = useSupabase();
 
   useEffect(() => {
     const loadSchedule = async () => {
@@ -87,34 +85,13 @@ export default function SchedulePage() {
 
         setRaces(sortedSchedule);
 
-        // Load user picks for all races
-        const token = document.cookie
-          .split("; ")
-          .find((row) => row.startsWith("auth_token="))
-          ?.split("=")[1];
-
-        if (token) {
-          const { data: user } = await supabase
-            .from("profiles")
-            .select("id, is_admin")
-            .eq("auth_token", token)
-            .single();
-
-          if (user) {
-            setIsAdmin(user.is_admin || false);
-
-            const { data: userPicks } = await supabase
-              .from("picks")
-              .select("race_id, driver_1_id, driver_2_id, driver_3_id")
-              .eq("user_id", user.id);
-
-            if (userPicks) {
-              const picksMap: Record<number, number[]> = {};
-              userPicks.forEach((pick: any) => {
-                picksMap[pick.race_id] = [pick.driver_1_id, pick.driver_2_id, pick.driver_3_id].filter(Boolean);
-              });
-              setPicks(picksMap);
-            }
+        // Load user info and picks via API
+        const res = await fetch("/api/user");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.user) {
+            setIsAdmin(data.user.is_admin || false);
+            setPicks(data.picks || {});
           }
         }
       } finally {

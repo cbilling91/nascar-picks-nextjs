@@ -3,15 +3,11 @@ variable "image_tag" {
   default = "latest"
 }
 
-variable "supabase_url" {
-  type = string
-}
-
-variable "supabase_anon_key" {
-  type = string
-}
-
-variable "supabase_service_role_key" {
-  type      = string
-  sensitive = true
+# ---------------------------------------------------------------------------
+# CockroachDB Cloud credentials
+# ---------------------------------------------------------------------------
+variable "cockroachdb_api_key" {
+  type        = string
+  sensitive   = true
+  description = "CockroachDB Cloud API key from https://cockroachlabs.cloud"
 }

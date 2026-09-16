@@ -4,7 +4,6 @@ import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { QueryProvider } from "@/components/providers/QueryProvider";
-import { SupabaseProvider } from "@/components/providers/SupabaseProvider";
 import { getCurrentUser } from "@/lib/token-auth";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -27,18 +26,13 @@ export default async function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={inter.className}>
-        <SupabaseProvider
-          url={process.env.SUPABASE_URL!}
-          anonKey={process.env.SUPABASE_ANON_KEY!}
-        >
-          <QueryProvider>
-            <Header user={user} />
-            <main className="min-h-screen pb-16 md:pb-0">
-              {children}
-            </main>
-            <MobileNav />
-          </QueryProvider>
-        </SupabaseProvider>
+        <QueryProvider>
+          <Header user={user} />
+          <main className="min-h-screen pb-16 md:pb-0">
+            {children}
+          </main>
+          <MobileNav />
+        </QueryProvider>
       </body>
     </html>
   );

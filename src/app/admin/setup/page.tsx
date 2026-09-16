@@ -2,57 +2,52 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useSupabase } from "@/lib/supabase/client";
 
 export default function AdminSetupPage() {
   const router = useRouter();
-  const supabase = useSupabase();
-  const [userId, setUserId] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [token, setToken] = useState("");
 
-  const handleSetAdmin = async (e: React.FormEvent) => {
+  const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setMessage("");
     setLoading(true);
 
     try {
-      if (!userId.trim()) {
-        setError("User ID is required");
+      if (!displayName.trim()) {
+        setError("Display name is required");
         setLoading(false);
         return;
       }
 
-      // Insert or update the profile to set as admin
-      const { error: upsertError } = await supabase
-        .from("profiles")
-        .upsert(
-          {
-            id: userId,
-            display_name: displayName || "Admin User",
-            is_admin: true,
-            created_at: new Date().toISOString(),
-          },
-          { onConflict: "id" }
-        );
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          display_name: displayName.trim(),
+          is_admin: true,
+        }),
+      });
 
-      if (upsertError) {
-        setError(`Failed to set admin: ${upsertError.message}`);
+      if (!res.ok) {
+        const err = await res.json();
+        setError(`Failed to create admin: ${err.error}`);
       } else {
-        setMessage(`User ${userId} has been set as admin!`);
-        setUserId("");
+        const data = await res.json();
+        setToken(data.user.auth_token);
+        setMessage(`Admin user created! Save this token: ${data.user.auth_token}`);
         setDisplayName("");
         setTimeout(() => {
           router.push("/admin/users");
-        }, 2000);
+        }, 3000);
       }
     } catch (err: any) {
       setError(err.message || "An error occurred");
@@ -66,40 +61,35 @@ export default function AdminSetupPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Admin Setup</CardTitle>
-          <CardDescription>Set a user as admin by their UUID</CardDescription>
+          <CardDescription>Create the first admin user</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSetAdmin} className="space-y-4">
+          <form onSubmit={handleCreateAdmin} className="space-y-4">
             <div>
-              <Label htmlFor="userId">User ID (UUID)</Label>
-              <Input
-                id="userId"
-                type="text"
-                placeholder="5047c103-9c67-4caa-b8de-6945084d60c4"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-                required
-                disabled={loading}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="displayName">Display Name (Optional)</Label>
+              <Label htmlFor="displayName">Display Name</Label>
               <Input
                 id="displayName"
                 type="text"
                 placeholder="Admin User"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
+                required
                 disabled={loading}
               />
             </div>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
-            {message && <p className="text-sm text-green-600">{message}</p>}
+            {message && (
+              <div className="p-3 rounded bg-green-50 dark:bg-green-950/20 text-sm">
+                <p className="text-green-700 dark:text-green-400 font-semibold mb-1">Admin created successfully!</p>
+                <p className="text-green-600 dark:text-green-500 break-all text-xs">
+                  Auth Token: <code className="font-mono">{token}</code>
+                </p>
+              </div>
+            )}
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Setting Admin..." : "Set as Admin"}
+              {loading ? "Creating Admin..." : "Create Admin User"}
             </Button>
           </form>
         </CardContent>
