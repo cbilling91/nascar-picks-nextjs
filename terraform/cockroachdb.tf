@@ -24,7 +24,7 @@ resource "cockroach_cluster" "nascar_picks" {
   cloud_provider = "GCP"
   serverless = {
     usage_limits = {
-      request_units = 0  # $0 = free tier, scales to zero when idle
+      request_units = 0 # $0 = free tier, scales to zero when idle
     }
   }
   regions = [
