@@ -24,8 +24,6 @@ import {
   type RaceStageInfo,
   type LiveLapData,
 } from "@/lib/nascar-api";
-import { useSupabase } from "@/lib/supabase/client";
-
 export default function LivePage() {
   const searchParams = useSearchParams();
   const raceId = searchParams.get("raceId");
@@ -38,7 +36,6 @@ export default function LivePage() {
   const [totalLaps, setTotalLaps] = useState(0);
   const [leader, setLeader] = useState<string>("");
   const [flagState, setFlagState] = useState(0);
-  const supabase = useSupabase();
 
   useEffect(() => {
     const loadRaceData = async () => {
@@ -99,17 +96,12 @@ export default function LivePage() {
           }
         }
 
-        // Fetch all user picks for this race using NASCAR race ID directly
-        const { data: picks, error: picksError } = await supabase
-          .from("picks")
-          .select("user_id, race_id, driver_1_id, driver_2_id, driver_3_id, profiles!inner(display_name)")
-          .eq("race_id", parseInt(raceId));
+        // Fetch all user picks for this race via API
+        const picksRes = await fetch(`/api/race-picks?raceId=${raceId}`);
+        const picksData = picksRes.ok ? await picksRes.json() : { picks: [] };
+        const picks = picksData.picks || [];
 
-        if (picksError) {
-          console.error("Error fetching picks:", picksError);
-        }
-
-        if (!picks || picks.length === 0) {
+        if (picks.length === 0) {
           setLoading(false);
           return;
         }

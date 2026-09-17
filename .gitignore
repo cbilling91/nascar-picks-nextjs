@@ -16,6 +16,17 @@ dist/
 .env.test.local
 .env.production.local
 db.info
+old_db_connection_string.txt
+
+# Legacy one-off migration scripts (contain hardcoded credentials)
+migrate_players.js
+migrate_players_supabase.js
+migrate_players_complete.js
+migrate_picks.js
+
+# Local artifacts
+___All_Errors.txt
+__.next/
 
 # Debug
 npm-debug.log*
@@ -42,4 +53,11 @@ next-env.d.ts
 
 # Testing
 coverage/
+# Terraform
 terraform/terraform.tfvars
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log

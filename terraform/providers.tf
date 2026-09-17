@@ -8,6 +8,22 @@ terraform {
       source  = "Azure/azapi"
       version = "~> 1.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
+    external = {
+      source  = "hashicorp/external"
+      version = "~> 2.3"
+    }
+    null = {
+      source  = "hashicorp/null"
+      version = "~> 3.2"
+    }
+    cockroach = {
+      source  = "cockroachdb/cockroach"
+      version = "~> 1.0"
+    }
   }
 
   backend "azurerm" {

@@ -5,10 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { useSupabase } from "@/lib/supabase/client";
 import { Trash2, Plus, Copy, Check } from "lucide-react";
-import { generateAuthToken } from "@/lib/auth-token";
 
 interface User {
   id: string;
@@ -21,7 +18,6 @@ interface User {
 }
 
 export default function UsersPage() {
-  const supabase = useSupabase();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -44,28 +40,16 @@ export default function UsersPage() {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const { data: profiles, error } = await supabase
-        .from("profiles")
-        .select("id, display_name, phone_number, text_notifications, is_admin, auth_token, created_at")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Error loading profiles:", error);
+      const res = await fetch("/api/admin/users");
+      if (!res.ok) {
+        console.error("Error loading users:", res.status);
         setUsers([]);
         return;
       }
-
-      setUsers((profiles || []).map(p => ({
-        id: p.id,
-        display_name: p.display_name,
-        phone_number: p.phone_number || null,
-        text_notifications: p.text_notifications || false,
-        is_admin: p.is_admin,
-        auth_token: p.auth_token || "",
-        created_at: p.created_at,
-      })));
-    } catch (error) {
-      console.error("Error loading users:", error);
+      const data = await res.json();
+      setUsers(data.users || []);
+    } catch (err) {
+      console.error("Error loading users:", err);
     }
     setLoading(false);
   };
@@ -81,53 +65,53 @@ export default function UsersPage() {
     }
 
     try {
-      const newId = editingId || crypto.randomUUID();
-      const authToken = editingId ? undefined : generateAuthToken();
-
-      const payload: any = {
-        id: newId,
-        display_name: formData.display_name,
-        phone_number: formData.phone_number || null,
-        text_notifications: formData.text_notifications,
-        is_admin: formData.is_admin,
-        created_at: new Date().toISOString(),
-      };
-
-      if (authToken) {
-        payload.auth_token = authToken;
-      }
-
       if (editingId) {
-        const { error: updateError } = await supabase
-          .from("profiles")
-          .update(payload)
-          .eq("id", editingId);
+        const res = await fetch("/api/admin/users", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editingId,
+            display_name: formData.display_name,
+            phone_number: formData.phone_number || null,
+            text_notifications: formData.text_notifications,
+            is_admin: formData.is_admin,
+          }),
+        });
 
-        if (updateError) {
-          setError(`Failed to update player: ${updateError.message}`);
-        } else {
-          setMessage(`Player "${formData.display_name}" updated successfully!`);
-          setEditingId(null);
-          setFormData({ display_name: "", phone_number: "", text_notifications: false, is_admin: false });
-          setShowForm(false);
-          loadUsers();
-          setTimeout(() => setMessage(""), 3000);
+        if (!res.ok) {
+          const err = await res.json();
+          setError(`Failed to update player: ${err.error}`);
+          return;
         }
+
+        setMessage(`Player "${formData.display_name}" updated successfully!`);
       } else {
-        const { error: insertError } = await supabase
-          .from("profiles")
-          .insert(payload);
+        const res = await fetch("/api/admin/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            display_name: formData.display_name,
+            phone_number: formData.phone_number || null,
+            text_notifications: formData.text_notifications,
+            is_admin: formData.is_admin,
+          }),
+        });
 
-        if (insertError) {
-          setError(`Failed to add player: ${insertError.message}`);
-        } else {
-          setMessage(`Player "${formData.display_name}" added successfully!`);
-          setFormData({ display_name: "", phone_number: "", text_notifications: false, is_admin: false });
-          setShowForm(false);
-          loadUsers();
-          setTimeout(() => setMessage(""), 3000);
+        if (!res.ok) {
+          const err = await res.json();
+          setError(`Failed to add player: ${err.error}`);
+          return;
         }
+
+        const data = await res.json();
+        setMessage(`Player "${formData.display_name}" added successfully! Token: ${data.user.auth_token}`);
       }
+
+      setEditingId(null);
+      setFormData({ display_name: "", phone_number: "", text_notifications: false, is_admin: false });
+      setShowForm(false);
+      loadUsers();
+      setTimeout(() => setMessage(""), 5000);
     } catch (err: any) {
       setError(err.message || "An error occurred");
     }
@@ -146,12 +130,13 @@ export default function UsersPage() {
 
   const handleToggleAdmin = async (userId: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ is_admin: !currentStatus })
-        .eq("id", userId);
+      const res = await fetch("/api/admin/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: userId, is_admin: !currentStatus }),
+      });
 
-      if (error) {
+      if (!res.ok) {
         alert("Failed to update admin status");
       } else {
         loadUsers();
@@ -168,12 +153,13 @@ export default function UsersPage() {
     }
 
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .delete()
-        .eq("id", userId);
+      const res = await fetch("/api/admin/users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
 
-      if (error) {
+      if (!res.ok) {
         alert("Failed to delete player");
       } else {
         loadUsers();
@@ -326,29 +312,28 @@ export default function UsersPage() {
                       <span>{user.is_admin ? "✓" : "—"}</span>
                     </div>
 
-                    <div className="bg-muted p-3 rounded space-y-2">
-                      <p className="text-xs font-semibold">Auth Token:</p>
-                      <div className="flex gap-2 items-center">
-                        <code className="text-xs bg-background p-2 rounded flex-1 overflow-x-auto">
-                          {user.auth_token}
-                        </code>
-                        <Button
-                          onClick={() => copyToClipboard(user.auth_token)}
-                          variant="ghost"
-                          size="sm"
-                          className="flex-shrink-0"
-                        >
-                          {copiedToken === user.auth_token ? (
-                            <Check className="w-4 h-4 text-green-600" />
-                          ) : (
-                            <Copy className="w-4 h-4" />
-                          )}
-                        </Button>
+                    {user.auth_token && (
+                      <div className="bg-muted p-3 rounded space-y-2">
+                        <p className="text-xs font-semibold">Auth Token (hashed):</p>
+                        <div className="flex gap-2 items-center">
+                          <code className="text-xs bg-background p-2 rounded flex-1 overflow-x-auto">
+                            {user.auth_token.substring(0, 16)}...
+                          </code>
+                          <Button
+                            onClick={() => copyToClipboard(user.auth_token)}
+                            variant="ghost"
+                            size="sm"
+                            className="flex-shrink-0"
+                          >
+                            {copiedToken === user.auth_token ? (
+                              <Check className="w-4 h-4 text-green-600" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        Share this token in text messages as: {window.location.origin}?token={user.auth_token}
-                      </p>
-                    </div>
+                    )}
                   </div>
                 ))}
               </div>

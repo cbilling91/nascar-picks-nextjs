@@ -4,22 +4,19 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-
 import { Flag, Check } from "lucide-react";
-import { useSupabase } from "@/lib/supabase/client";
 import { getNASCARSchedule, getNASCARDrivers, type NASCARRace, type NASCARDriver } from "@/lib/nascar-api";
 
 function PicksContent() {
   const searchParams = useSearchParams();
   const raceId = searchParams.get("raceId") || "2";
-  
+
   const [race, setRace] = useState<NASCARRace | null>(null);
   const [drivers, setDrivers] = useState<NASCARDriver[]>([]);
   const [selectedDrivers, setSelectedDrivers] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const supabase = useSupabase();
 
   useEffect(() => {
     const loadRaceAndPicks = async () => {
@@ -29,12 +26,12 @@ function PicksContent() {
         const schedule = await getNASCARSchedule();
         const foundRace = schedule.find((r) => r.raceId === parseInt(raceId));
         setRace(foundRace || null);
-        
+
         // Fetch drivers
         const driversList = await getNASCARDrivers();
         setDrivers(driversList);
-        
-        // Load user picks
+
+        // Load user picks via API
         await loadUserPicks();
       } finally {
         setLoading(false);
@@ -44,41 +41,17 @@ function PicksContent() {
   }, [raceId]);
 
   const loadUserPicks = async () => {
-    setLoading(true);
     try {
-      // Get token from cookie
-      const token = document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("auth_token="))
-        ?.split("=")[1];
-
-      if (!token) {
+      const res = await fetch(`/api/picks?raceId=${raceId}`);
+      if (!res.ok) {
         setLoading(false);
         return;
       }
 
-      // Get user by token
-      const { data: user } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("auth_token", token)
-        .single();
-
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-      const { data } = await supabase
-        .from("picks")
-        .select("driver_1_id, driver_2_id, driver_3_id")
-        .eq("user_id", user.id)
-        .eq("race_id", parseInt(raceId))
-        .single();
-
-      if (data) {
-        const drivers = [data.driver_1_id, data.driver_2_id, data.driver_3_id].filter(Boolean);
-        setSelectedDrivers(drivers);
+      const data = await res.json();
+      if (data.picks) {
+        const driverIds = [data.picks.driver_1_id, data.picks.driver_2_id, data.picks.driver_3_id].filter(Boolean);
+        setSelectedDrivers(driverIds);
       }
     } catch (error) {
       console.error("Error loading picks:", error);
@@ -105,68 +78,20 @@ function PicksContent() {
 
     setSaving(true);
     try {
-      // Get token from cookie
-      const token = document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("auth_token="))
-        ?.split("=")[1];
+      const res = await fetch("/api/picks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          raceId: parseInt(raceId),
+          driver_1_id: selectedDrivers[0],
+          driver_2_id: selectedDrivers[1],
+          driver_3_id: selectedDrivers[2],
+        }),
+      });
 
-      if (!token) {
-        setMessage("Not authenticated");
-        setSaving(false);
-        return;
-      }
-
-      // Get user by token
-      const { data: user } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("auth_token", token)
-        .single();
-
-      if (!user) {
-        setMessage("Not authenticated");
-        setSaving(false);
-        return;
-      }
-
-      // Check if picks already exist for this race
-      const { data: existingPicks } = await supabase
-        .from("picks")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("race_id", parseInt(raceId))
-        .single();
-
-      let error;
-      if (existingPicks) {
-        // Update existing pick
-        const { error: updateError } = await supabase
-          .from("picks")
-          .update({
-            driver_1_id: selectedDrivers[0],
-            driver_2_id: selectedDrivers[1],
-            driver_3_id: selectedDrivers[2],
-          })
-          .eq("user_id", user.id)
-          .eq("race_id", parseInt(raceId));
-        error = updateError;
-      } else {
-        // Insert new pick
-        const { error: insertError } = await supabase
-          .from("picks")
-          .insert({
-            user_id: user.id,
-            race_id: parseInt(raceId),
-            driver_1_id: selectedDrivers[0],
-            driver_2_id: selectedDrivers[1],
-            driver_3_id: selectedDrivers[2],
-          });
-        error = insertError;
-      }
-
-      if (error) {
-        setMessage(`Error saving picks: ${error.message}`);
+      if (!res.ok) {
+        const err = await res.json();
+        setMessage(`Error saving picks: ${err.error}`);
       } else {
         setMessage("Picks saved successfully!");
         setTimeout(() => setMessage(""), 3000);

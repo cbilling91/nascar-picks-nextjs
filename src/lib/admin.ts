@@ -1,28 +1,24 @@
-import { createClient } from "@/lib/supabase/server";
+import { db, profiles } from "@/lib/db";
+import { eq } from "drizzle-orm";
+import { getCurrentUser } from "@/lib/token-auth";
 
+/**
+ * Check if a specific user ID has admin privileges.
+ */
 export async function isUserAdmin(userId: string): Promise<boolean> {
-  const supabase = await createClient();
-  
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("is_admin")
-    .eq("id", userId)
-    .single();
+  const user = await db.query.profiles.findFirst({
+    where: eq(profiles.id, userId),
+    columns: { isAdmin: true },
+  });
 
-  if (error) {
-    console.error("Error checking admin status:", error);
-    return false;
-  }
-
-  return data?.is_admin ?? false;
+  return user?.isAdmin ?? false;
 }
 
+/**
+ * Check if the currently authenticated user (via auth_token cookie) is an admin.
+ */
 export async function getCurrentUserAdmin(): Promise<boolean> {
-  const supabase = await createClient();
-  
-  const { data: { user } } = await supabase.auth.getUser();
-  
+  const user = await getCurrentUser();
   if (!user) return false;
-  
-  return isUserAdmin(user.id);
+  return user.is_admin;
 }

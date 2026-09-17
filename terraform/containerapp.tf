@@ -20,8 +20,8 @@ resource "azurerm_container_app" "nascar_picks_app" {
   revision_mode                = "Single"
 
   secret {
-    name  = "supabase-service-role-key"
-    value = var.supabase_service_role_key
+    name  = "database-url"
+    value = local.cockroachdb_connection_string
   }
 
   template {
@@ -32,18 +32,8 @@ resource "azurerm_container_app" "nascar_picks_app" {
       memory = "0.5Gi"
 
       env {
-        name  = "SUPABASE_URL"
-        value = var.supabase_url
-      }
-
-      env {
-        name  = "SUPABASE_ANON_KEY"
-        value = var.supabase_anon_key
-      }
-
-      env {
-        name        = "SUPABASE_SERVICE_ROLE_KEY"
-        secret_name = "supabase-service-role-key"
+        name        = "DATABASE_URL"
+        secret_name = "database-url"
       }
 
       env {
