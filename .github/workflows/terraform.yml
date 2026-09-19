@@ -76,9 +76,7 @@ jobs:
         run: |
           cat > terraform.tfvars <<EOF
           image_tag                 = "${{ steps.image.outputs.tag }}"
-          supabase_url              = "${{ secrets.SUPABASE_URL }}"
-          supabase_anon_key         = "${{ secrets.SUPABASE_ANON_KEY }}"
-          supabase_service_role_key = "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
+          database_url              = "${{ secrets.DATABASE_URL }}"
           EOF
 
       - name: Terraform Plan

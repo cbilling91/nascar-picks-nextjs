@@ -70,11 +70,6 @@ resource "azurerm_container_app" "nascar_picks_app" {
     min_replicas = 1
   }
 
-  # CI/CD deploys new image tags outside of Terraform
-  lifecycle {
-    ignore_changes = [template[0].container[0].image]
-  }
-
   ingress {
     allow_insecure_connections = false
     external_enabled           = true

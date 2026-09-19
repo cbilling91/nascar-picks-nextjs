@@ -43,11 +43,19 @@ async function checkRaceStarted(raceId: number): Promise<boolean> {
       { next: { revalidate: 3600 } }
     );
     const schedule = await res.json();
+    // The feed has multiple entries per race (practice, qualifying, race) -
+    // use the actual race event, not the weekend's first session.
     const race = (Array.isArray(schedule) ? schedule : []).find(
-      (e: any) => e.race_id === raceId
+      (e: any) =>
+        e.race_id === raceId &&
+        (e.event_name === "Race" || e.event_name?.includes("Qualifying Race"))
     );
-    if (race?.start_time) {
-      return Date.now() >= new Date(race.start_time).getTime();
+    if (race?.start_time_utc) {
+      // start_time_utc is UTC but lacks a Z suffix, so parse it explicitly
+      const utc = race.start_time_utc.endsWith("Z")
+        ? race.start_time_utc
+        : race.start_time_utc + "Z";
+      return Date.now() >= new Date(utc).getTime();
     }
   } catch {
     // ignore
