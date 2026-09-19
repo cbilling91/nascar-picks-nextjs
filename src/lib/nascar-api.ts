@@ -3,6 +3,7 @@ export interface NASCARRace {
   name: string;
   date: string;
   track: string;
+  trackId?: number;
   type: string;
 }
 
@@ -59,6 +60,12 @@ export interface LiveLapData {
   flagState: number; // 1=green, 2=caution, etc.
   runningPositions: Map<number, number>; // driverId -> running position
   leader: { driverId: number; name: string } | null;
+}
+
+// Official NASCAR track logo (wide wordmark PNG with alpha).
+// track_id comes from the schedule feed; all tracks on the schedule are covered.
+export function getTrackImageUrl(trackId: number): string {
+  return `https://cf.nascar.com/data/images/tracks/${trackId}.png`;
 }
 
 // NASCAR Cup Series Points System
@@ -152,6 +159,7 @@ export async function getNASCARSchedule(): Promise<NASCARRace[]> {
         // Use local start_time without Z suffix - JS will interpret as local time
         date: race.start_time || '',
         track: race.track_name,
+        trackId: race.track_id,
         type: raceType,
       };
     });

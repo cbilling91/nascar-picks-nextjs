@@ -5,8 +5,8 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "lucide-react";
-import { getNASCARSchedule, getNASCARDrivers, isRaceLiveOrUpcoming, getLiveLapData, type NASCARRace, type NASCARDriver } from "@/lib/nascar-api";
+import { Calendar, MessageSquare } from "lucide-react";
+import { getNASCARSchedule, getNASCARDrivers, isRaceLiveOrUpcoming, getLiveLapData, getTrackImageUrl, type NASCARRace, type NASCARDriver } from "@/lib/nascar-api";
 
 const raceTypes: Record<string, { label: string; color: string }> = {
   clash: { label: "Clash", color: "bg-purple-600" },
@@ -24,6 +24,7 @@ export default function SchedulePage() {
   const [liveRaces, setLiveRaces] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
     const loadSchedule = async () => {
@@ -89,10 +90,13 @@ export default function SchedulePage() {
         const res = await fetch("/api/user");
         if (res.ok) {
           const data = await res.json();
+          setIsLoggedIn(!!data.user);
           if (data.user) {
             setIsAdmin(data.user.is_admin || false);
             setPicks(data.picks || {});
           }
+        } else {
+          setIsLoggedIn(false);
         }
       } finally {
         setLoading(false);
@@ -145,6 +149,21 @@ export default function SchedulePage() {
         <h1 className="text-2xl font-bold">2026 Race Schedule</h1>
       </div>
 
+      {isLoggedIn === false && (
+        <Card className="mb-6 border-amber-500/50 bg-amber-500/10">
+          <CardContent className="py-4 flex items-start gap-3">
+            <MessageSquare className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-semibold">Access required</p>
+              <p className="text-sm text-muted-foreground">
+                You must open this app from the access link that was texted to you.
+                Contact an admin if you need a new link.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {loading ? (
         <p className="text-muted-foreground text-center py-8">Loading schedule...</p>
       ) : races.length === 0 ? (
@@ -157,6 +176,18 @@ export default function SchedulePage() {
               className={index === 0 ? "border-primary border-2 bg-primary/5" : ""}
             >
               <CardHeader className="pb-2">
+                {race.trackId && (
+                  <div className="inline-flex items-center mb-3">
+                    <img
+                      src={getTrackImageUrl(race.trackId)}
+                      alt={`${race.track} logo`}
+                      className="h-9 object-contain rounded dark:invert dark:hue-rotate-180"
+                      onError={(e) => {
+                        (e.currentTarget.parentElement as HTMLElement).style.display = "none";
+                      }}
+                    />
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <CardTitle className="text-lg">{race.name}</CardTitle>
@@ -222,7 +253,7 @@ export default function SchedulePage() {
                       </Link>
                     </Button>
                   )}
-                  {(new Date(race.date).getTime() >= new Date().getTime() || (isAdmin && liveRaces.has(race.raceId))) && (
+                  {isLoggedIn === true && (new Date(race.date).getTime() >= new Date().getTime() || (isAdmin && liveRaces.has(race.raceId))) && (
                     <Button asChild className="flex-1" size="sm">
                       <Link href={`/picks?raceId=${race.raceId}`}>
                         {picks[race.raceId] && picks[race.raceId].length > 0 ? "Edit Picks" : "Make Picks"}

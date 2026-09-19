@@ -20,10 +20,6 @@ terraform {
       source  = "hashicorp/null"
       version = "~> 3.2"
     }
-    cockroach = {
-      source  = "cockroachdb/cockroach"
-      version = "~> 1.0"
-    }
   }
 
   backend "azurerm" {

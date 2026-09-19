@@ -2,10 +2,12 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Flag, Check } from "lucide-react";
-import { getNASCARSchedule, getNASCARDrivers, type NASCARRace, type NASCARDriver } from "@/lib/nascar-api";
+import { Separator } from "@/components/ui/separator";
+import { Flag, Check, Radio } from "lucide-react";
+import { getNASCARSchedule, getNASCARDrivers, getLiveLapData, getTrackImageUrl, type NASCARRace, type NASCARDriver } from "@/lib/nascar-api";
 
 function PicksContent() {
   const searchParams = useSearchParams();
@@ -17,6 +19,7 @@ function PicksContent() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [locked, setLocked] = useState(false);
 
   useEffect(() => {
     const loadRaceAndPicks = async () => {
@@ -26,6 +29,16 @@ function PicksContent() {
         const schedule = await getNASCARSchedule();
         const foundRace = schedule.find((r) => r.raceId === parseInt(raceId));
         setRace(foundRace || null);
+
+        // Picks lock at the green flag (or at start time for race types without lap data)
+        if (foundRace) {
+          if (foundRace.type === "regular") {
+            const lapData = await getLiveLapData(foundRace.raceId);
+            setLocked(!!lapData && lapData.currentLap > 0);
+          } else {
+            setLocked(new Date(foundRace.date).getTime() < Date.now());
+          }
+        }
 
         // Fetch drivers
         const driversList = await getNASCARDrivers();
@@ -104,13 +117,33 @@ function PicksContent() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center gap-2 mb-6">
-        <Flag className="h-6 w-6" />
-        <h1 className="text-2xl font-bold">Make Your Picks</h1>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <Flag className="h-6 w-6" />
+          <h1 className="text-2xl font-bold">Make Your Picks</h1>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link href={`/race?raceId=${raceId}`}>
+            <Radio className="h-4 w-4 mr-1" />
+            View Race
+          </Link>
+        </Button>
       </div>
 
       <Card className="mb-6">
         <CardHeader>
+          {race?.trackId && (
+            <div className="inline-flex items-center mb-3">
+              <img
+                src={getTrackImageUrl(race.trackId)}
+                alt={`${race.track} logo`}
+                className="h-10 object-contain rounded dark:invert dark:hue-rotate-180"
+                onError={(e) => {
+                  (e.currentTarget.parentElement as HTMLElement).style.display = "none";
+                }}
+              />
+            </div>
+          )}
           <CardTitle>{race?.name || "Race"}</CardTitle>
           <CardDescription>{race?.date && race?.track ? `${race.date} • ${race.track}` : "Loading race details..."}</CardDescription>
         </CardHeader>
@@ -120,46 +153,71 @@ function PicksContent() {
           </p>
 
           {message && (
-            <div className="mb-4 p-3 rounded bg-blue-50 text-blue-900 text-sm">
+            <div className="mb-4 p-3 rounded bg-blue-50 text-blue-900 dark:bg-blue-950/60 dark:text-blue-200 text-sm">
               {message}
             </div>
           )}
 
           {selectedDrivers.length > 0 && (
-            <div className="mb-6 grid grid-cols-3 gap-4">
-              {selectedDrivers.map((driverId) => {
-                const driver = drivers.find((d) => d.id === driverId);
-                if (!driver) return null;
-                return (
-                  <div key={driver.id} className="flex flex-col items-center">
-                    <div className="w-full aspect-square bg-muted rounded-lg overflow-hidden mb-2 flex items-center justify-center relative">
-                      {driver.firesuitImage ? (
-                        <img
-                          src={driver.firesuitImage}
-                          alt={`${driver.name} firesuit`}
-                          className="w-full h-full object-contain"
-                        />
-                      ) : (
-                        <div className="text-muted-foreground text-sm">No firesuit image</div>
-                      )}
-                      {driver.badgeImage && (
-                        <img
-                          src={driver.badgeImage}
-                          alt={`${driver.name} badge`}
-                          className="absolute top-2 left-2 h-12 w-12 object-contain bg-white rounded p-1"
-                        />
-                      )}
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold mb-3">
+                Your Picks ({selectedDrivers.length}/3)
+              </h3>
+              <div className="grid grid-cols-3 gap-4">
+                {selectedDrivers.map((driverId) => {
+                  const driver = drivers.find((d) => d.id === driverId);
+                  if (!driver) return null;
+                  return (
+                    <div key={driver.id} className="flex flex-col items-center">
+                      <div className="w-full aspect-square bg-muted rounded-lg overflow-hidden mb-2 flex items-center justify-center relative">
+                        {driver.firesuitImage ? (
+                          <img
+                            src={driver.firesuitImage}
+                            alt={`${driver.name} firesuit`}
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <div className="text-muted-foreground text-sm">No firesuit image</div>
+                        )}
+                        {driver.badgeImage && (
+                          <img
+                            src={driver.badgeImage}
+                            alt={`${driver.name} badge`}
+                            className="absolute top-2 left-2 h-12 w-12 object-contain bg-white rounded p-1"
+                          />
+                        )}
+                      </div>
+                      <p className="text-sm font-semibold text-center line-clamp-2">{driver.name}</p>
+                      <p className="text-xs text-muted-foreground text-center">{driver.teamName}</p>
                     </div>
-                    <p className="text-sm font-semibold text-center line-clamp-2">{driver.name}</p>
-                    <p className="text-xs text-muted-foreground text-center">{driver.teamName}</p>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center gap-3 mt-8">
+                <Separator className="flex-1" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Choose Drivers
+                </span>
+                <Separator className="flex-1" />
+              </div>
             </div>
           )}
 
           {loading ? (
             <p className="text-muted-foreground">Loading your picks...</p>
+          ) : locked ? (
+            <div className="text-center py-6">
+              <p className="text-muted-foreground mb-4">
+                Picks are locked - the race has started.
+              </p>
+              <Button asChild>
+                <Link href={`/race?raceId=${raceId}`}>
+                  <Radio className="h-4 w-4 mr-1" />
+                  Watch the Race
+                </Link>
+              </Button>
+            </div>
           ) : (
             <>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">

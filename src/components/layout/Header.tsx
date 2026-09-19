@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { LogOut, Settings } from "lucide-react";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 interface HeaderProps {
   user: {
@@ -46,9 +47,6 @@ export function Header({ user }: HeaderProps) {
           <Link href="/schedule" className="text-sm font-medium hover:text-primary">
             Schedule
           </Link>
-          <Link href="/standings" className="text-sm font-medium hover:text-primary">
-            Standings
-          </Link>
           <Link href="/rules" className="text-sm font-medium hover:text-primary">
             Rules
           </Link>
@@ -61,7 +59,8 @@ export function Header({ user }: HeaderProps) {
         </nav>
 
         <div className="flex items-center space-x-4">
-          {isAuthenticated ? (
+          <ThemeToggle />
+          {isAuthenticated && (
             <div className="flex items-center space-x-2">
               <Avatar className="h-8 w-8">
                 <AvatarFallback>{initials}</AvatarFallback>
@@ -71,10 +70,6 @@ export function Header({ user }: HeaderProps) {
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
-          ) : (
-            <Button asChild variant="default" size="sm">
-              <Link href="/login">Sign In</Link>
-            </Button>
           )}
         </div>
       </div>

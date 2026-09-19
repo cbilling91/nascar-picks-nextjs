@@ -21,7 +21,12 @@ resource "azurerm_container_app" "nascar_picks_app" {
 
   secret {
     name  = "database-url"
-    value = local.cockroachdb_connection_string
+    value = var.database_url
+  }
+
+  secret {
+    name  = "supabase-service-role-key"
+    value = var.supabase_service_role_key
   }
 
   template {
@@ -32,8 +37,18 @@ resource "azurerm_container_app" "nascar_picks_app" {
       memory = "0.5Gi"
 
       env {
-        name        = "DATABASE_URL"
-        secret_name = "database-url"
+        name  = "SUPABASE_URL"
+        value = var.supabase_url
+      }
+
+      env {
+        name  = "SUPABASE_ANON_KEY"
+        value = var.supabase_anon_key
+      }
+
+      env {
+        name        = "SUPABASE_SERVICE_ROLE_KEY"
+        secret_name = "supabase-service-role-key"
       }
 
       env {
@@ -46,9 +61,18 @@ resource "azurerm_container_app" "nascar_picks_app" {
         value = "https://app.nascar-picks.com"
       }
 
+      env {
+        name        = "DATABASE_URL"
+        secret_name = "database-url"
+      }
     }
 
     min_replicas = 1
+  }
+
+  # CI/CD deploys new image tags outside of Terraform
+  lifecycle {
+    ignore_changes = [template[0].container[0].image]
   }
 
   ingress {

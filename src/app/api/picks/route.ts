@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, picks, profiles } from "@/lib/db";
 import { eq, and } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/token-auth";
+import { hasRaceStarted } from "@/lib/race-status";
 
 // GET /api/picks?raceId=123 — get the current user's picks for a race
 export async function GET(request: NextRequest) {
@@ -60,6 +61,11 @@ export async function POST(request: NextRequest) {
 
     if (!raceId || !driver_1_id || !driver_2_id || !driver_3_id) {
       return NextResponse.json({ error: "raceId and three driver IDs are required" }, { status: 400 });
+    }
+
+    // Picks lock at the green flag
+    if (await hasRaceStarted(parseInt(raceId))) {
+      return NextResponse.json({ error: "Picks are locked - the race has started" }, { status: 423 });
     }
 
     // Check if picks already exist for this user + race

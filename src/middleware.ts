@@ -28,7 +28,7 @@ export async function middleware(request: NextRequest) {
 
   // Protected routes - redirect to home if not authenticated
   // Note: /admin/users and /admin/setup are publicly accessible for setup
-  const protectedPaths = ["/picks", "/standings", "/live"];
+  const protectedPaths = ["/picks"];
   const isProtectedPath = protectedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );

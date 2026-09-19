@@ -104,12 +104,12 @@ export const picks = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => profiles.id, { onDelete: "cascade" }),
-    raceId: integer("race_id")
-      .notNull()
-      .references(() => races.id, { onDelete: "cascade" }),
-    driver1Id: integer("driver_1_id").references(() => drivers.id),
-    driver2Id: integer("driver_2_id").references(() => drivers.id),
-    driver3Id: integer("driver_3_id").references(() => drivers.id),
+    // race_id and driver_*_id store NASCAR API ids as plain references
+    // (FK constraints removed in migrations 009-011)
+    raceId: integer("race_id").notNull(),
+    driver1Id: integer("driver_1_id"),
+    driver2Id: integer("driver_2_id"),
+    driver3Id: integer("driver_3_id"),
     isPublic: boolean("is_public").default(false),
     submittedAt: timestamp("submitted_at", { withTimezone: true }).defaultNow(),
     lockedAt: timestamp("locked_at", { withTimezone: true }),
