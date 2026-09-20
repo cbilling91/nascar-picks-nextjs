@@ -24,32 +24,12 @@ resource "azurerm_container_app" "nascar_picks_app" {
     value = var.database_url
   }
 
-  secret {
-    name  = "supabase-service-role-key"
-    value = var.supabase_service_role_key
-  }
-
   template {
     container {
       name   = "nascar-picks"
       image  = "ghcr.io/cbilling91/nascar-picks-nextjs:${var.image_tag}"
       cpu    = 0.25
       memory = "0.5Gi"
-
-      env {
-        name  = "SUPABASE_URL"
-        value = var.supabase_url
-      }
-
-      env {
-        name  = "SUPABASE_ANON_KEY"
-        value = var.supabase_anon_key
-      }
-
-      env {
-        name        = "SUPABASE_SERVICE_ROLE_KEY"
-        secret_name = "supabase-service-role-key"
-      }
 
       env {
         name  = "NASCAR_API_BASE_URL"

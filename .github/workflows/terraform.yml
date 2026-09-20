@@ -31,6 +31,7 @@ env:
 jobs:
   plan:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: terraform
@@ -64,7 +65,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
-        run: terraform init
+        run: terraform init -input=false
 
       - name: Terraform Format Check
         run: terraform fmt -check
@@ -77,10 +78,13 @@ jobs:
           cat > terraform.tfvars <<EOF
           image_tag                 = "${{ steps.image.outputs.tag }}"
           database_url              = "${{ secrets.DATABASE_URL }}"
+          supabase_url              = "${{ secrets.SUPABASE_URL }}"
+          supabase_anon_key         = "${{ secrets.SUPABASE_ANON_KEY }}"
+          supabase_service_role_key = "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
           EOF
 
       - name: Terraform Plan
-        run: terraform plan -out=tfplan
+        run: terraform plan -input=false -out=tfplan
 
       - name: Upload plan
         uses: actions/upload-artifact@v4
@@ -92,6 +96,7 @@ jobs:
   apply:
     needs: plan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     environment: production   # ← pauses here for approval
     defaults:
@@ -113,7 +118,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
-        run: terraform init
+        run: terraform init -input=false
 
       - name: Download plan
         uses: actions/download-artifact@v4
@@ -122,4 +127,4 @@ jobs:
           path: terraform
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+        run: terraform apply -input=false -auto-approve tfplan
