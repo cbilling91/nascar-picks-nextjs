@@ -153,11 +153,24 @@ export async function getNASCARSchedule(): Promise<NASCARRace[]> {
         raceType = "allstar";
       }
 
+      // The feed provides start_time (track-local, no timezone offset) and
+      // start_time_utc (UTC, but missing the "Z" suffix). Use the UTC value
+      // with an explicit Z so Date parses it as an absolute instant — the
+      // browser then renders it in the viewer's local timezone and all
+      // timestamp comparisons (pick locks, live checks, sorting) are correct.
+      const startTimeUtc = race.start_time_utc
+        ? race.start_time_utc.endsWith("Z")
+          ? race.start_time_utc
+          : race.start_time_utc + "Z"
+        : "";
+      const parsedStart = startTimeUtc ? new Date(startTimeUtc) : null;
+
       return {
         raceId: race.race_id,
         name: race.race_name,
-        // Use local start_time without Z suffix - JS will interpret as local time
-        date: race.start_time || '',
+        date: parsedStart && !isNaN(parsedStart.getTime())
+          ? parsedStart.toISOString()
+          : race.start_time || '',
         track: race.track_name,
         trackId: race.track_id,
         type: raceType,
