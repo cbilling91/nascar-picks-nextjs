@@ -22,6 +22,15 @@ function PicksContent() {
   const [message, setMessage] = useState("");
   const [locked, setLocked] = useState(false);
 
+  // Admin state: current user, the player list, and whose picks are being managed
+  const [currentUser, setCurrentUser] = useState<{ id: string; display_name: string; is_admin: boolean } | null>(null);
+  const [players, setPlayers] = useState<{ id: string; display_name: string }[]>([]);
+  const [targetUserId, setTargetUserId] = useState(""); // "" = my own picks
+  const isAdmin = !!currentUser?.is_admin;
+  const targetPlayer = players.find((p) => p.id === targetUserId);
+  // The race-start lock doesn't apply to admins
+  const effectivelyLocked = locked && !isAdmin;
+
   // True when the current selection differs from what's saved in the DB
   const isDirty =
     JSON.stringify([...selectedDrivers].sort((a, b) => a - b)) !==
@@ -69,8 +78,23 @@ function PicksContent() {
         const driversList = await getNASCARDrivers();
         setDrivers(driversList);
 
-        // Load user picks via API
-        await loadUserPicks();
+        // Load current user; admins also get the player list so they can
+        // make or change picks on behalf of other players
+        const userRes = await fetch("/api/user");
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          setCurrentUser(userData.user);
+          if (userData.user?.is_admin) {
+            const usersRes = await fetch("/api/admin/users");
+            if (usersRes.ok) {
+              const usersData = await usersRes.json();
+              setPlayers(usersData.users || []);
+            }
+          }
+        }
+
+        // Load picks via API
+        await loadUserPicks(targetUserId);
       } finally {
         setLoading(false);
       }
@@ -78,20 +102,29 @@ function PicksContent() {
     loadRaceAndPicks();
   }, [raceId]);
 
-  const loadUserPicks = async () => {
+  // When an admin switches the selected player, load that player's picks
+  useEffect(() => {
+    if (!loading) {
+      loadUserPicks(targetUserId);
+    }
+  }, [targetUserId]);
+
+  const loadUserPicks = async (forUserId: string) => {
     try {
-      const res = await fetch(`/api/picks?raceId=${raceId}`);
+      const params = new URLSearchParams({ raceId });
+      if (forUserId) params.set("userId", forUserId);
+      const res = await fetch(`/api/picks?${params.toString()}`);
       if (!res.ok) {
         setLoading(false);
         return;
       }
 
       const data = await res.json();
-      if (data.picks) {
-        const driverIds = [data.picks.driver_1_id, data.picks.driver_2_id, data.picks.driver_3_id].filter(Boolean);
-        setSelectedDrivers(driverIds);
-        setSavedDrivers(driverIds);
-      }
+      const driverIds = data.picks
+        ? [data.picks.driver_1_id, data.picks.driver_2_id, data.picks.driver_3_id].filter(Boolean)
+        : [];
+      setSelectedDrivers(driverIds);
+      setSavedDrivers(driverIds);
     } catch (error) {
       console.error("Error loading picks:", error);
     }
@@ -125,6 +158,8 @@ function PicksContent() {
           driver_1_id: selectedDrivers[0],
           driver_2_id: selectedDrivers[1],
           driver_3_id: selectedDrivers[2],
+          // Admins: save picks on behalf of the selected player
+          ...(targetUserId ? { userId: targetUserId } : {}),
         }),
       });
 
@@ -157,6 +192,37 @@ function PicksContent() {
         </Button>
       </div>
 
+      {isAdmin && (
+        <Card className="mb-6 border-amber-500/50 bg-amber-500/10">
+          <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex-1">
+              <p className="font-semibold text-sm">
+                Admin{targetPlayer ? `: making picks for ${targetPlayer.display_name}` : ": manage picks"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                You can make or change picks for any player, even after the race has started.
+              </p>
+            </div>
+            <select
+              value={targetUserId}
+              onChange={(e) => setTargetUserId(e.target.value)}
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm shrink-0"
+            >
+              <option value="">
+                My picks{currentUser ? ` (${currentUser.display_name})` : ""}
+              </option>
+              {players
+                .filter((p) => p.id !== currentUser?.id)
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.display_name}
+                  </option>
+                ))}
+            </select>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="mb-6">
         <CardHeader>
           {race?.trackId && (
@@ -185,6 +251,12 @@ function PicksContent() {
             </div>
           )}
 
+          {locked && isAdmin && (
+            <div className="mb-4 p-3 rounded bg-amber-50 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 text-sm">
+              The race has started — as an admin you can still change {targetPlayer ? `${targetPlayer.display_name}'s` : "these"} picks.
+            </div>
+          )}
+
           {selectedDrivers.length > 0 && (
             <>
               {/* Sentinel: when it scrolls under the site header, the picks bar is stuck */}
@@ -204,8 +276,8 @@ function PicksContent() {
                         <button
                           key={driver.id}
                           type="button"
-                          onClick={() => !locked && toggleDriver(driver.id)}
-                          title={locked ? driver.name : `Remove ${driver.name}`}
+                          onClick={() => !effectivelyLocked && toggleDriver(driver.id)}
+                          title={effectivelyLocked ? driver.name : `Remove ${driver.name}`}
                           className="flex items-center gap-1.5 bg-muted rounded-full pl-1.5 pr-2 py-1 shrink-0 group cursor-pointer"
                         >
                           {driver.badgeImage && (
@@ -216,13 +288,13 @@ function PicksContent() {
                             />
                           )}
                           <span className="text-xs font-medium whitespace-nowrap">{driver.name}</span>
-                          {!locked && (
+                          {!effectivelyLocked && (
                             <X className="h-3 w-3 text-muted-foreground group-hover:text-destructive" />
                           )}
                         </button>
                       );
                     })}
-                    {!locked && (
+                    {!effectivelyLocked && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -239,7 +311,7 @@ function PicksContent() {
                       <h3 className="text-sm font-semibold">
                         Your Picks ({selectedDrivers.length}/3)
                       </h3>
-                      {!locked && (
+                      {!effectivelyLocked && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -258,9 +330,9 @@ function PicksContent() {
                     <button
                       key={driver.id}
                       type="button"
-                      onClick={() => !locked && toggleDriver(driver.id)}
-                      title={locked ? driver.name : `Remove ${driver.name}`}
-                      className={`flex flex-col items-center group ${locked ? "cursor-default" : "cursor-pointer"}`}
+                      onClick={() => !effectivelyLocked && toggleDriver(driver.id)}
+                      title={effectivelyLocked ? driver.name : `Remove ${driver.name}`}
+                      className={`flex flex-col items-center group ${effectivelyLocked ? "cursor-default" : "cursor-pointer"}`}
                     >
                       <div className="w-full aspect-square bg-muted rounded-lg overflow-hidden mb-2 flex items-center justify-center relative">
                         {driver.firesuitImage ? (
@@ -279,7 +351,7 @@ function PicksContent() {
                             className="absolute top-2 left-2 h-12 w-12 object-contain bg-white rounded p-1"
                           />
                         )}
-                        {!locked && (
+                        {!effectivelyLocked && (
                           <div className="absolute top-1 right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity">
                             <X className="h-3 w-3" />
                           </div>
@@ -307,7 +379,7 @@ function PicksContent() {
 
           {loading ? (
             <p className="text-muted-foreground">Loading your picks...</p>
-          ) : locked ? (
+          ) : effectivelyLocked ? (
             <div className="text-center py-6">
               <p className="text-muted-foreground mb-4">
                 Picks are locked - the race has started.
