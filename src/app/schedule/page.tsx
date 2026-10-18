@@ -197,9 +197,6 @@ export default function SchedulePage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <CardTitle className="text-lg">{race.name}</CardTitle>
-                    {index === 0 && (
-                      <Badge className="bg-green-600">Next Race</Badge>
-                    )}
                   </div>
                   <Badge className={getRaceTypeColor(race.isPlayoff ? "playoffs" : race.type)}>
                     {getRaceTypeLabel(race.isPlayoff ? "playoffs" : race.type)}

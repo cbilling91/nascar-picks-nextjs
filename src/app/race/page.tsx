@@ -469,6 +469,9 @@ export default function LivePage() {
             };
           });
 
+          // Highest-scoring drivers first (stable sort keeps pick order on ties)
+          driverResults.sort((a, b) => b.pointsEarned - a.pointsEarned);
+
           return {
             userId: pick.user_id,
             username: pick.profiles.display_name,
