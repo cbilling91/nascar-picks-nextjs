@@ -2,11 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, picks, profiles } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { hasRaceStarted } from "@/lib/race-status";
+import { getCurrentUser } from "@/lib/token-auth";
 
 // GET /api/race-picks?raceId=123 — get all picks for a race with user display names
 // Picks are hidden until the race starts (green flag) to prevent copying.
 export async function GET(request: NextRequest) {
   try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const raceId = searchParams.get("raceId");
 

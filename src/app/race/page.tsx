@@ -186,7 +186,7 @@ function UserResultCard({
 }) {
   return (
     <Card
-      className={index === 0 && !isLive ? "border-yellow-500 border-2 bg-yellow-50 dark:bg-yellow-950/20" : ""}
+      className={(index === 0 || result.isWeeklyWinner) && !isLive ? "border-yellow-500 border-2 bg-yellow-50 dark:bg-yellow-950/20" : ""}
     >
       <CardContent className="py-4">
         <div className="flex items-center justify-between mb-3">
@@ -499,10 +499,16 @@ export default function LivePage() {
           // Regular race or duel - sort by points (higher is better)
           userResults.sort((a, b) => b.totalPoints - a.totalPoints);
 
-          // Mark weekly winner and add 25 point bonus for regular races (only if race is complete)
+          // Mark weekly winner(s) and add 25 point bonus for regular races (only if race is complete).
+          // If multiple users tie for the top score, they all get the winner bonus.
           if (userResults.length > 0 && raceInfo.type === "regular" && !liveStatus) {
-            userResults[0].isWeeklyWinner = true;
-            userResults[0].totalPoints += 25;
+            const topScore = userResults[0].totalPoints;
+            userResults.forEach((user) => {
+              if (user.totalPoints === topScore) {
+                user.isWeeklyWinner = true;
+                user.totalPoints += 25;
+              }
+            });
           }
         }
 

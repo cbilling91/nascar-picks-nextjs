@@ -26,16 +26,23 @@ export async function middleware(request: NextRequest) {
 
   const response = NextResponse.next({ request });
 
-  // Protected routes - redirect to home if not authenticated
-  // Note: /admin/users and /admin/setup are publicly accessible for setup
-  const protectedPaths = ["/picks"];
-  const isProtectedPath = protectedPaths.some((path) =>
+  // Everything requires authentication except the public paths below.
+  // /admin/setup and /api/admin/users stay public so the first admin can be
+  // created; /api/user returns `{ user: null }` for anonymous callers and is
+  // used by client components to check auth state.
+  const publicPaths = ["/login", "/admin/setup", "/api/admin/users", "/api/user"];
+  const isPublicPath = publicPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
 
-  if (isProtectedPath && !tokenFromCookie) {
+  if (!isPublicPath && !tokenFromCookie) {
+    // API requests get a 401; page requests get redirected to /login
+    if (request.nextUrl.pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = "/login";
+    url.search = "";
     return NextResponse.redirect(url);
   }
 

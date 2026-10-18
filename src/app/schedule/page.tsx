@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, MessageSquare } from "lucide-react";
-import { getNASCARSchedule, getNASCARDrivers, isRaceLiveOrUpcoming, getLiveLapData, getTrackImageUrl, type NASCARRace, type NASCARDriver } from "@/lib/nascar-api";
+import { getNASCARSchedule, getNASCARDrivers, isRaceLiveOrUpcoming, getLiveLapData, getRaceResults, getTrackImageUrl, type NASCARRace, type NASCARDriver } from "@/lib/nascar-api";
 
 const raceTypes: Record<string, { label: string; color: string }> = {
   clash: { label: "Clash", color: "bg-purple-600" },
@@ -50,7 +50,12 @@ export default function SchedulePage() {
           todayRaces.map(async (race) => {
             if (race.type === "regular") {
               const lapData = await getLiveLapData(race.raceId);
-              return lapData && lapData.currentLap > 0;
+              if (!lapData || lapData.currentLap === 0) return false;
+              // lap-times keeps LapsCompleted > 0 after the checkered flag, so
+              // the race only counts as live until official results post points
+              // (same heuristic as the race page).
+              const results = await getRaceResults(race.raceId);
+              return results.every((r) => r.pointsEarned === 0);
             }
             return isRaceLiveOrUpcoming(race.raceId, race.date);
           })
