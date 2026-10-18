@@ -14,6 +14,7 @@ const raceTypes: Record<string, { label: string; color: string }> = {
   regular: { label: "Regular Season", color: "bg-green-600" },
   allstar: { label: "All-Star", color: "bg-orange-600" },
   chase: { label: "Chase", color: "bg-red-600" },
+  playoffs: { label: "Playoffs", color: "bg-red-600" },
   tournament: { label: "Tournament", color: "bg-yellow-600" },
 };
 
@@ -200,8 +201,8 @@ export default function SchedulePage() {
                       <Badge className="bg-green-600">Next Race</Badge>
                     )}
                   </div>
-                  <Badge className={getRaceTypeColor(race.type)}>
-                    {getRaceTypeLabel(race.type)}
+                  <Badge className={getRaceTypeColor(race.isPlayoff ? "playoffs" : race.type)}>
+                    {getRaceTypeLabel(race.isPlayoff ? "playoffs" : race.type)}
                   </Badge>
                 </div>
               </CardHeader>

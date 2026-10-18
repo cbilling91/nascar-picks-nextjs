@@ -5,6 +5,7 @@ export interface NASCARRace {
   track: string;
   trackId?: number;
   type: string;
+  isPlayoff?: boolean;
 }
 
 export interface NASCARDriver {
@@ -127,10 +128,10 @@ export async function getNASCARSchedule(): Promise<NASCARRace[]> {
 
     // Parse the schedule feed and extract races
     // Filter for race events (not practice/qualifying) and deduplicate by race_id
-    const races = Array.isArray(data) ? data : data.races || [];
+    const events = Array.isArray(data) ? data : data.races || [];
     const raceMap = new Map<number, any>();
 
-    races.forEach((event: any) => {
+    events.forEach((event: any) => {
       // Include actual races and qualifying races (Duels)
       if (event.race_id && (event.event_name === "Race" || event.event_name?.includes("Qualifying Race"))) {
         // Keep the first occurrence of each race_id
@@ -140,7 +141,7 @@ export async function getNASCARSchedule(): Promise<NASCARRace[]> {
       }
     });
 
-    return Array.from(raceMap.values()).map((race: any) => {
+    const races: NASCARRace[] = Array.from(raceMap.values()).map((race: any) => {
       // Detect race type from race name
       let raceType = "regular";
       const raceName = race.race_name || "";
@@ -176,6 +177,21 @@ export async function getNASCARSchedule(): Promise<NASCARRace[]> {
         type: raceType,
       };
     });
+
+    // The feed has no playoff indicator, so derive it from the season
+    // structure: the final 10 points-paying races (i.e. excluding the Clash
+    // and All-Star exhibitions) are the playoffs, ending with the
+    // Championship race. Type stays "regular" so scoring/live logic is
+    // unchanged — this only drives the schedule badge.
+    const pointsRaces = races
+      .filter((r) => r.type === "regular")
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const playoffIds = new Set(pointsRaces.slice(-10).map((r) => r.raceId));
+    races.forEach((r) => {
+      r.isPlayoff = playoffIds.has(r.raceId);
+    });
+
+    return races;
   } catch (error) {
     console.error("Error fetching NASCAR schedule:", error);
     return [];
